@@ -9,7 +9,7 @@ function [traj_meas,traj_gt] = readTrajectory(file_path)
   fclose(fid);
 endfunction
 
-function [cam_mat, cam_trans, z_near, z_far, width, height] = readCamera(file_path)
+function [cam_mat, cam_trans, z_near, z_far, width, height] = readCameraParams(file_path)
   fid = fopen(file_path, 'r');
   data = textscan(fid, "%f %f %f", 3, "HeaderLines",1, "CollectOutput",1);
   cam_mat = cell2mat(data);
@@ -21,5 +21,12 @@ function [cam_mat, cam_trans, z_near, z_far, width, height] = readCamera(file_pa
   z_far = data(2);
   width = data(3);
   height = data(4);
+  fclose(fid);
+endfunction
+
+function lan_gt = readLandmarksGT(file_path)
+  fid = fopen(file_path, 'r');
+  data = textscan(fid, "%*d %f %f %f");
+  lan_gt = cell2mat(data);
   fclose(fid);
 endfunction
