@@ -1,17 +1,14 @@
 close all
-clear all
+clear
 clc
 
-# Read the trajectory (id, measurements ,ground truth)
-fid = fopen("./Dataset/trajectory.dat", 'r');
-trajectoryData = textscan(fid, "%*s %d %f %f %f %f %f %f");
+source "./utils/data_utils.m"
+source "./utils/plot_utils.m"
 
-trajMeas = cell2mat(trajectoryData(1,2:4))
-subplot(2,1,1)
-plot(trajMeas(:,1), trajMeas(:,2))
-title("Measurements")
+# Read the trajectory (measurements & ground truth)
+[traj_meas,traj_gt] = readTrajectory("./Dataset/trajectory.dat");
 
-trajGT = cell2mat(trajectoryData(1,5:7))
-subplot(2,1,2)
-plot(trajGT(:,1), trajGT(:,2))
-title("Ground Truth")
+# Read camera parameters
+[cam_mat, cam_trans, z_near, z_far, width, height] = readCamera("./Dataset/camera.dat");
+
+plotOdometryAndGT(traj_meas, traj_gt);
