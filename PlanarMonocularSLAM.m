@@ -43,25 +43,23 @@ for measurement_num=1:num_poses-1
 end
 
 %%%%%%%%%%%%%%% PROJECTION MEASUREMENTS %%%%%%%%%%%%%%%
-num_projection_measurements=num_poses*num_landmarks;
-Zp=zeros(2,num_projection_measurements);
-projection_associations=zeros(2,num_projection_measurements);
+Zp=zeros(2,num_poses*num_landmarks);
+projection_associations=zeros(2,num_poses*num_landmarks);
 
 % Read the projection measurements
 measurement_num=0;
 for pose_num = 1:num_poses
   [id_landmarks, measurements] = readMeasurements(pose_num);
-  for meas = 1:size(measurements,1)
+  for meas = 1:size(measurements,2)
     measurement_num = measurement_num + 1;
     projection_associations(:,measurement_num) = [pose_num, id_landmarks(meas)]';
     Zp(:,measurement_num) = measurements(:,meas);
   end
 end
 
-# Crop the matrices
-##num_projection_measurements=measurement_num-1;
-##projection_associations=projection_associations(:,1:num_projection_measurements);
-##Zp=Zp(:,1:num_projection_measurements);
+% Crop the matrices
+projection_associations=projection_associations(:,1:measurement_num);
+Zp=Zp(:,1:measurement_num);
 
 
 
