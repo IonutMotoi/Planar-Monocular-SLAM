@@ -1,7 +1,7 @@
-# Plots
+% Plots
 1;
 
-# Plot odometry and ground truth
+% Plot odometry and ground truth
 function plotOdometryAndGT(traj_meas, traj_gt)
   subplot(2,1,1)
   plot(traj_meas(:,1), traj_meas(:,2))
