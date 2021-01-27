@@ -61,6 +61,13 @@ end
 projection_associations=projection_associations(:,1:measurement_num);
 Zp=Zp(:,1:measurement_num);
 
-
+%%%%%%%%%%%%%%% Least Squares Solver %%%%%%%%%%%%%%%
+num_iterations=20;
+[XR, XL, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
+												                                                                                    Zp, projection_associations, 
+												                                                                                    Zr, pose_associations, 
+                                                                                                            num_iterations,
+                                                                                                            damping,
+                                                                                                            kernel_threshold);
 
 %plotOdometryAndGT(traj_meas, traj_gt);
