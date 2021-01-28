@@ -23,8 +23,14 @@ for i = 1:num_poses
 end
 
 % Read camera parameters
-[cam_mat, cam_trans, z_near, z_far, width, height] = readCameraParams();
-
+global K;
+global cam_pose;
+global z_near;
+global z_far;
+global image_rows;
+global image_cols;
+[K, cam_pose, z_near, z_far, image_cols, image_rows] = readCameraParams();
+tryPrintK()
 % Read the landmark true positions
 % Matrix 3*num_landmarks
 lan_gt = readLandmarksGT();
@@ -71,7 +77,7 @@ for (pose_num=2:num_poses)
     XR_guess(:,:,pose_num)=dXr*XR_guess(:,:,pose_num);
 endfor;
 
-%%%%%%%%%%%%%%% Least Squares Solver %%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%% LEAST SQUARES SOLVER %%%%%%%%%%%%%%%
 damping=1;
 kernel_threshold=1e3;
 num_iterations=5;

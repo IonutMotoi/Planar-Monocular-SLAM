@@ -1,5 +1,5 @@
 source "./least_squares_poses.m"
-%source "./least_squares_projections.m"
+source "./least_squares_projections.m"
 
 function [XR, XL] = boxPlus(XR, XL, dx)
   global num_poses;
@@ -44,16 +44,16 @@ function [XR, XL, chi_stats_p, num_inliers_p,chi_stats_r, num_inliers_r, H, b] =
     H=zeros(system_size, system_size);
     b=zeros(system_size,1);
    
-    %[H_projections, b_projections, chi_, num_inliers_] = buildLinearSystemProjections(XR,XL,Zp,projection_associations, kernel_threshold); 
-    %chi_stats_p(iteration)+=chi_;
-    %num_inliers_p(iteration)=num_inliers_;
+    [H_projections, b_projections, chi_, num_inliers_] = buildLinearSystemProjections(XR,XL,Zp,projection_associations, kernel_threshold); 
+    chi_stats_p(iteration)+=chi_;
+    num_inliers_p(iteration)=num_inliers_;
 
     [H_poses, b_poses, chi_, num_inliers_] = buildLinearSystemPoses(XR, XL, Zr, kernel_threshold);
     chi_stats_r(iteration)+=chi_;
     num_inliers_r(iteration)=num_inliers_;
     
-    H = H_poses;% + H_projections;
-    b = b_poses;% + b_projections;
+    H = H_poses + H_projections;
+    b = b_poses + b_projections;
 
     H+=eye(system_size)*damping;
     dx=zeros(system_size,1);

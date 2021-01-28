@@ -1,71 +1,110 @@
 source "./utils/geom_utils.m"
+source "./least_squares_indices.m"
 
-function [e,Ji,Jj]=poseErrorAndJacobian(Xi,Xj,Z)
-  global R0;
-  Ri=Xi(1:2,1:2);
-  Rj=Xj(1:2,1:2);
-  ti=Xi(1:2,3);
-  tj=Xj(1:2,3);
-  tij=tj-ti;
-  Ri_transposed=Ri';
-  Ji=zeros(6,3);
-  Jj=zeros(6,3);
+function [is_valid, e,Jr,Jl]=projectionErrorAndJacobian(Xr,Xl,z)
+  global K;
+  global cam_pose;
+  global z_near;
+  global z_far;
+  global image_rows;
+  global image_cols;
 
-  Jj(5:6,1:2)=Ri_transposed;
-  Jj(1:4,3)=reshape(Ri_transposed*R0*Rj, 4, 1);
-  Jj(5:6,3)=-Ri_transposed*R0*tj;
-  Ji=-Jj;
+  is_valid=false;
+  e = [0,0];
+  Jr = zeros(2,6);
+  Jl = zeros(2,3);
 
-  Z_hat=eye(3);
-  Z_hat(1:2,1:2)=Ri_transposed*Rj;
-  Z_hat(1:2,3)=Ri_transposed*tij;
-  e=flattenMatrixByColumns(Z_hat-Z);
+  % 2D pose -> 3D pose (z=0, rotation only around z axis)
+  R = eye(3);
+  R(1:2,1:2) = Xr(1:2,1:2);
+  t = zeros(3,1);
+  t(1:2) = Xr(1:2,3);
+
+  % inverse transform
+  iR = R';
+  it = -iR * t;
+
+  % point prediction
+  pw = iR*Xl + it;
+  if pw(3) < z_near || pw(3) > z_far
+     return;
+  end
+
+  Jwr=zeros(3,6);
+  Jwr(1:3,1:3)=-iR;
+  Jwr(1:3,4:6)=iR*skew(Xl);
+  Jwl=iR;
+
+  p_cam=K*pw;
+  iz=1./p_cam(3);
+  z_hat=p_cam(1:2)*iz;
+  if (z_hat(1)<0 || 
+      z_hat(1)>image_cols ||
+      z_hat(2)<0 || 
+      z_hat(2)>image_rows)
+    return;
+  endif;
+
+  iz2=iz*iz;
+  Jp=[iz, 0, -p_cam(1)*iz2;
+      0, iz, -p_cam(2)*iz2];
+  
+  e=z_hat-z;
+  Jr=Jp*K*Jwr;
+  Jl=Jp*K*Jwl;
+  is_valid=true;
 end
 
 
-function [H,b, chi_tot, num_inliers]=buildLinearSystemPoses(XR, XL, Zr, kernel_threshold)
+function [H,b, chi_tot, num_inliers]=buildLinearSystemProjections(XR, XL, Zl, associations, kernel_threshold)
   global num_poses;
   global num_landmarks;
   global pose_dim;
   global landmark_dim;
 
-  system_size = pose_dim*num_poses + landmark_dim*num_landmarks;
+  system_size = pose_dim*num_poses + landmark_dim*num_landmarks; 
   H = zeros(system_size, system_size);
   b = zeros(system_size,1);
   chi_tot = 0;
   num_inliers = 0;
-  for measurement_num = 1:size(Zr,3)
-    Omega=eye(6);
-    Omega(1:4,1:4)*=1e3; # we need to pimp the rotation  part a little
-    Z=Zr(:,:,measurement_num);
-    Xi=XR(:,:,measurement_num);
-    Xj=XR(:,:,measurement_num+1);
-    [e,Ji,Jj] = poseErrorAndJacobian(Xi, Xj, Z);
-    chi=e'*Omega*e;
+
+  for (measurement_num=1:size(Zl,2))
+    pose_index=associations(1,measurement_num);
+    landmark_index=associations(2,measurement_num);
+    z=Zl(:,measurement_num);
+    Xr=XR(:,:,pose_index);
+    Xl=XL(:,landmark_index);
+
+    [is_valid, e,Jr,Jl] = projectionErrorAndJacobian(Xr, Xl, z);
+    if (! is_valid)
+       continue;
+    end
+
+    chi=e'*e;
     if (chi>kernel_threshold)
-      Omega*=sqrt(kernel_threshold/chi);
+      e*=sqrt(kernel_threshold/chi);
       chi=kernel_threshold;
     else
-      num_inliers ++;
+      num_inliers++;
     end
     chi_tot+=chi;
 
-    pose_i_matrix_index = 1 + (measurement_num-1)*pose_dim;
-    pose_j_matrix_index= pose_i_matrix_index + pose_dim;
-    
-    H(pose_i_matrix_index:pose_i_matrix_index+pose_dim-1,
-      pose_i_matrix_index:pose_i_matrix_index+pose_dim-1)+=Ji'*Omega*Ji;
+    pose_matrix_index=poseMatrixIndex(pose_index);
+    landmark_matrix_index=landmarkMatrixIndex(landmark_index);
 
-    H(pose_i_matrix_index:pose_i_matrix_index+pose_dim-1,
-      pose_j_matrix_index:pose_j_matrix_index+pose_dim-1)+=Ji'*Omega*Jj;
+    H(pose_matrix_index:pose_matrix_index+pose_dim-1,
+      pose_matrix_index:pose_matrix_index+pose_dim-1)+=Jr'*Jr;
 
-    H(pose_j_matrix_index:pose_j_matrix_index+pose_dim-1,
-      pose_i_matrix_index:pose_i_matrix_index+pose_dim-1)+=Jj'*Omega*Ji;
+    H(pose_matrix_index:pose_matrix_index+pose_dim-1,
+      landmark_matrix_index:landmark_matrix_index+landmark_dim-1)+=Jr'*Jl;
 
-    H(pose_j_matrix_index:pose_j_matrix_index+pose_dim-1,
-      pose_j_matrix_index:pose_j_matrix_index+pose_dim-1)+=Jj'*Omega*Jj;
+    H(landmark_matrix_index:landmark_matrix_index+landmark_dim-1,
+      landmark_matrix_index:landmark_matrix_index+landmark_dim-1)+=Jl'*Jl;
 
-    b(pose_i_matrix_index:pose_i_matrix_index+pose_dim-1)+=Ji'*Omega*e;
-    b(pose_j_matrix_index:pose_j_matrix_index+pose_dim-1)+=Jj'*Omega*e;
+    H(landmark_matrix_index:landmark_matrix_index+landmark_dim-1,
+      pose_matrix_index:pose_matrix_index+pose_dim-1)+=Jl'*Jr;
+
+    b(pose_matrix_index:pose_matrix_index+pose_dim-1)+=Jr'*e;
+    b(landmark_matrix_index:landmark_matrix_index+landmark_dim-1)+=Jl'*e;
   end
 end

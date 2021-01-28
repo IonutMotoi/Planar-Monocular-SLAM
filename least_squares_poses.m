@@ -34,6 +34,7 @@ function [H,b, chi_tot, num_inliers]=buildLinearSystemPoses(XR, XL, Zr, kernel_t
   b = zeros(system_size,1);
   chi_tot = 0;
   num_inliers = 0;
+
   for measurement_num = 1:size(Zr,3)
     Omega=eye(6);
     Omega(1:4,1:4)*=1e3; # we need to pimp the rotation  part a little
@@ -50,8 +51,8 @@ function [H,b, chi_tot, num_inliers]=buildLinearSystemPoses(XR, XL, Zr, kernel_t
     end
     chi_tot+=chi;
 
-    pose_i_matrix_index = 1 + (measurement_num-1)*pose_dim;
-    pose_j_matrix_index= pose_i_matrix_index + pose_dim;
+    pose_i_matrix_index = poseMatrixIndex(measurement_num);
+    pose_j_matrix_index= poseMatrixIndex(measurement_num+1);
     
     H(pose_i_matrix_index:pose_i_matrix_index+pose_dim-1,
       pose_i_matrix_index:pose_i_matrix_index+pose_dim-1)+=Ji'*Omega*Ji;

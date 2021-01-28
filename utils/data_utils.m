@@ -9,18 +9,18 @@ function [traj_meas,traj_gt] = readTrajectory()
   fclose(fid);
 end
 
-function [cam_mat, cam_trans, z_near, z_far, width, height] = readCameraParams()
+function [K, cam_pose, z_near, z_far, image_cols, image_rows] = readCameraParams()
   fid = fopen("./Dataset/camera.dat", 'r');
   data = textscan(fid, "%f %f %f", 3, "HeaderLines",1, "CollectOutput",1);
-  cam_mat = cell2mat(data);
+  K = cell2mat(data);
   data = textscan(fid, "%f %f %f %f", 4, "HeaderLines",1, "CollectOutput",1);
-  cam_trans = cell2mat(data);
+  cam_pose = cell2mat(data);
   data = textscan(fid, "%*s %f");
   data = cell2mat(data);
   z_near = data(1);
   z_far = data(2);
-  width = data(3);
-  height = data(4);
+  image_cols = data(3); % width of the image
+  image_rows = data(4); % height of the image
   fclose(fid);
 end
 

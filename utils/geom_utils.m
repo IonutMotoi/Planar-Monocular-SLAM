@@ -19,3 +19,9 @@ function v = flattenMatrixByColumns(M)
 	v(1:4) = reshape(M(1:2,1:2),4,1);
 	v(5:6) = M(1:2,3);
 end
+
+function S=skew(v)
+  S=[   0, -v(3),  v(2);
+      v(3),    0, -v(1);
+     -v(2), v(1),    0];
+end
