@@ -5,6 +5,7 @@ clc
 source "./utils/data_utils.m"
 source "./utils/plot_utils.m"
 source "./utils/geom_utils.m"
+source "./least_squares.m"
 
 %%%%%%%%%%%%%%% LOAD DATA %%%%%%%%%%%%%%%
 
@@ -61,13 +62,39 @@ end
 projection_associations=projection_associations(:,1:measurement_num);
 Zp=Zp(:,1:measurement_num);
 
+%%%%%%%%%%%%%%% GENERATION OF (WRONG) INITIAL GUESS %%%%%%%%%%%%%%%
+pert_deviation=1;
+pert_scale=eye(3)*pert_deviation;
+for (pose_num=2:num_poses)
+    xr=rand(3,1)-0.5;
+    dXr=v2t(pert_scale*xr);
+    XR_guess(:,:,pose_num)=dXr*XR_guess(:,:,pose_num);
+endfor;
+
 %%%%%%%%%%%%%%% Least Squares Solver %%%%%%%%%%%%%%%
-num_iterations=20;
+damping=1;
+kernel_threshold=1e3;
+num_iterations=5;
 [XR, XL, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
-												                                                                                    Zp, projection_associations, 
-												                                                                                    Zr, pose_associations, 
-                                                                                                            num_iterations,
-                                                                                                            damping,
-                                                                                                            kernel_threshold);
+                                                                                Zp, projection_associations, 
+                                                                                Zr, 
+                                                                                num_iterations,
+                                                                                damping,
+                                                                                kernel_threshold);
+
+
+%%%%%%%%%%%%%%% PLOTS %%%%%%%%%%%%%%%
 
 %plotOdometryAndGT(traj_meas, traj_gt);
+
+figure(2);
+hold on;
+grid;
+title("chi evolution");
+
+subplot(1,2,1);
+plot(chi_stats_r, 'r-', "linewidth", 2);
+legend("Chi Poses"); grid; xlabel("iterations");
+subplot(1,2,2);
+plot(num_inliers_r, 'b-', "linewidth", 2);
+legend("#inliers"); grid; xlabel("iterations");
