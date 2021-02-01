@@ -31,7 +31,7 @@ function [is_valid, e,Jr,Jl]=projectionErrorAndJacobian(Xr,Xl,z)
   % point prediction
   % pw = iR*Xl + it;
   pw = iR_cam * (iR*Xl + it) + it_cam;
-  if pw(3) < z_near || pw(3) > z_far
+  if pw(3) < z_near %|| pw(3) > z_far
      return;
   end
 
