@@ -8,12 +8,12 @@ function [XR, XL] = boxPlus(XR, XL, dx)
   global landmark_dim;
   
   for pose_index = 1:num_poses
-    pose_matrix_index = 1 + (pose_index-1)*pose_dim;
+    pose_matrix_index = poseMatrixIndex(pose_index);
     dxr=dx(pose_matrix_index:pose_matrix_index+pose_dim-1,:);
     XR(:,:,pose_index)=v2t(dxr)*XR(:,:,pose_index);
   end
   for landmark_index = 1:num_landmarks
-    landmark_matrix_index=1 + num_poses*pose_dim + (landmark_index-1)*landmark_dim;
+    landmark_matrix_index = landmarkMatrixIndex(landmark_index);
     dxl=dx(landmark_matrix_index:landmark_matrix_index+landmark_dim-1,:);
     XL(:,landmark_index)+=dxl;
   end

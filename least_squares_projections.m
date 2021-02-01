@@ -10,49 +10,54 @@ function [is_valid, e,Jr,Jl]=projectionErrorAndJacobian(Xr,Xl,z)
   global image_cols;
 
   is_valid=false;
-  e = [0,0];
-  Jr = zeros(2,6);
+  e = [0;0];
+  Jr = zeros(2,3);
   Jl = zeros(2,3);
 
   % 2D pose -> 3D pose (z=0, rotation only around z axis)
-  R = eye(3);
-  R(1:2,1:2) = Xr(1:2,1:2);
-  t = zeros(3,1);
-  t(1:2) = Xr(1:2,3);
+  X_robot = eye(4);
+  X_robot(1:2,1:2) = Xr(1:2,1:2);
+  X_robot(1:2,4) = Xr(1:2,3);
+
+  % Camera pose in world coordinates
+  % X_cam = X_robot * cam_pose;
+  iR_cam = cam_pose(1:3,1:3)';
+  it_cam = -iR_cam * cam_pose(1:3,4);
 
   % inverse transform
-  iR = R';
-  it = -iR * t;
+  iR = X_robot(1:3,1:3)';
+  it = -iR * X_robot(1:3,4);
 
   % point prediction
-  pw = iR*Xl + it;
+  % pw = iR*Xl + it;
+  pw = iR_cam * (iR*Xl + it) + it_cam;
   if pw(3) < z_near || pw(3) > z_far
      return;
   end
 
-  Jwr=zeros(3,6);
-  Jwr(1:3,1:3)=-iR;
-  Jwr(1:3,4:6)=iR*skew(Xl);
-  Jwl=iR;
+  Jwr = zeros(3,3);
+  Jwr(1:3,1:2) = -iR_cam * iR * [1,0; 0,1; 0,0];
+  Jwr(1:3,3) = iR_cam * iR * [0,1,0; -1,0,0; 0,0,0] * Xl;
+  Jwl = iR_cam * iR;
 
-  p_cam=K*pw;
-  iz=1./p_cam(3);
-  z_hat=p_cam(1:2)*iz;
+  p_cam = K * pw;
+  iz = 1./p_cam(3);
+  z_hat = p_cam(1:2)*iz;
   if (z_hat(1)<0 || 
       z_hat(1)>image_cols ||
       z_hat(2)<0 || 
       z_hat(2)>image_rows)
     return;
-  endif;
+  end
 
-  iz2=iz*iz;
-  Jp=[iz, 0, -p_cam(1)*iz2;
-      0, iz, -p_cam(2)*iz2];
+  iz2 = iz*iz;
+  Jp = [iz,  0, -p_cam(1)*iz2;
+         0, iz, -p_cam(2)*iz2];
   
-  e=z_hat-z;
-  Jr=Jp*K*Jwr;
-  Jl=Jp*K*Jwl;
-  is_valid=true;
+  e = z_hat - z;
+  Jr = Jp * K * Jwr;
+  Jl = Jp * K * Jwl;
+  is_valid = true;
 end
 
 
