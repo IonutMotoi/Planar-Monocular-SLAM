@@ -14,22 +14,20 @@ function [is_valid, e,Jr,Jl]=projectionErrorAndJacobian(Xr,Xl,z)
   Jr = zeros(2,3);
   Jl = zeros(2,3);
 
-  % 2D pose -> 3D pose (z=0, rotation only around z axis)
+  % 2D pose -> 3D pose (z=0 and rotation only around z axis)
   X_robot = eye(4);
   X_robot(1:2,1:2) = Xr(1:2,1:2);
   X_robot(1:2,4) = Xr(1:2,3);
 
-  % Camera pose in world coordinates
-  % X_cam = X_robot * cam_pose;
+  % Inverse of camera pose (in robot coordinates)
   iR_cam = cam_pose(1:3,1:3)';
   it_cam = -iR_cam * cam_pose(1:3,4);
 
-  % inverse transform
+  % Inverse of robot pose (in world coordinates)
   iR = X_robot(1:3,1:3)';
   it = -iR * X_robot(1:3,4);
 
-  % point prediction
-  % pw = iR*Xl + it;
+  % Point prediction (in world coordinates)
   pw = iR_cam * (iR*Xl + it) + it_cam;
   if pw(3) < z_near %|| pw(3) > z_far
      return;
