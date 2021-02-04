@@ -13,8 +13,8 @@ source "./least_squares.m"
 % Read the trajectory (measurements & ground truth)
 % Matrices 3*num_poses
 [traj_meas,traj_gt] = readTrajectory();
-global num_poses = size(traj_meas,2)
-global pose_dim = 3
+global num_poses = size(traj_meas,2);
+global pose_dim = 3;
 
 % Convert the robot poses to an array of homogeneous matrices
 % Matrices 3*3*num_poses
@@ -70,11 +70,11 @@ end
 
 
 %%%%%%%%%%%%%%% INITIALIZE LANDMARKS %%%%%%%%%%%%%%%
-id_landmarks = unique(projection_associations(2,:));
+id_landmarks = unique(projection_associations(2,:)); % ids start from 1
 global num_landmarks = size(id_landmarks,2);
 global landmark_dim = 3;
 
-Xl_guess = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks);
+XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks);
 
 
 %%%%%%%%%%%%%%% GENERATION OF (WRONG) INITIAL GUESS %%%%%%%%%%%%%%%

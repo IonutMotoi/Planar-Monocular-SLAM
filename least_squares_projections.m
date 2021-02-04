@@ -27,7 +27,7 @@ function [is_valid, e,Jr,Jl]=projectionErrorAndJacobian(Xr,Xl,z)
   iR = X_robot(1:3,1:3)';
   it = -iR * X_robot(1:3,4);
 
-  % Point prediction (in world coordinates)
+  % Point prediction (in camera-pose coordinates)
   pw = iR_cam * (iR*Xl + it) + it_cam;
   if pw(3) < z_near %|| pw(3) > z_far
      return;

@@ -13,35 +13,51 @@ function XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations, i
   for i = 1:num_landmarks
     idx = (projection_associations(2,:) == id_landmarks(i));
     associations = projection_associations(1,idx);
-    if isempty(associations)
-      XL_guess(:,i) = [NaN; NaN; NaN];
+    % if the landmark is only seen once remove it from the list (cannot triangulate)
+    if size(associations,2) < 2
+      XL_guess(:,i) = [NaN, NaN, NaN]';
+      id_landmarks(i) = NaN;
       continue;
     endif
     projections = Zp(:,idx);
     
+
     X1 = getCameraPose(XR_guess(:,:,associations(1)));
     R1 = X1(1:3,1:3);
     t1 = X1(1:3,4);
-    z1 = projections(:,1);
-    d1 = R1*directionFromImgCoordinates(z1);
-    
-    if size(associations,2) == 1
-      % if landmark was only seen once, set the direction from the image
-      % and the z as the midpoint between z_near and z_far
-      XL_guess(:,i) = d1 / d1(3) * defaultZ;
-      continue;
-    endif
-    
+    d1 = R1*directionFromImgCoordinates( projections(:,1) );
+
     X2 = getCameraPose(XR_guess(:,:,associations(2)));
     R2 = X2(1:3,1:3);
+    d2 = R2*directionFromImgCoordinates( projections(:,2) );
+
+    second_cam_pose = 2;
+    min_dot_product = abs(dot(d1,d2));
+
+    if size(associations,2) > 2
+      for j = 3:size(associations,2);
+        Xtemp = getCameraPose( XR_guess(:,:,associations(j)) );
+        Rtemp = Xtemp(1:3,1:3);
+        dtemp = Rtemp * directionFromImgCoordinates( projections(:,j) );
+        dot_product = abs(dot(d1,dtemp));
+
+        if dot_product < min_dot_product
+          min_dot_product = dot_product;
+          second_cam_pose = j;
+          X2 = Xtemp;
+          d2 = dtemp;
+        endif
+      endfor
+    endif
+
     t2 = X2(1:3,4);
     p2 = t2 -t1;
-    z2 = projections(:,2);
-    d2 = R2*directionFromImgCoordinates(z2);
     
     [success, l, e] = triangulatePoint(p2,d1,d2);
-    XL_guess(:,i) = l;
+    XL_guess(:,i) = l + t1;
   endfor
+  % update the number of landmarks
+  num_landmarks = size(id_landmarks,2);
 end
 
 % Returns camera pose in world coordinates
@@ -69,6 +85,7 @@ function [success, p, e]=triangulatePoint(p2, d1, d2)
   s=-(D'*D)\(D'*p2);  
   #s: ascissa of closest point on p1 and p2
   if (s(1)<0 || s(2)<0)
+    disp("ERRROROORORORORO")
     return;
   endif;
   success=true;
