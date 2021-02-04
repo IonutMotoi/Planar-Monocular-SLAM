@@ -59,7 +59,7 @@ function [is_valid, e,Jr,Jl]=projectionErrorAndJacobian(Xr,Xl,z)
 end
 
 
-function [H,b, chi_tot, num_inliers]=buildLinearSystemProjections(XR, XL, Zl, associations, kernel_threshold)
+function [H,b, chi_tot, num_inliers]=buildLinearSystemProjections(XR, XL, Zp, associations, kernel_threshold)
   global num_poses;
   global num_landmarks;
   global pose_dim;
@@ -71,10 +71,10 @@ function [H,b, chi_tot, num_inliers]=buildLinearSystemProjections(XR, XL, Zl, as
   chi_tot = 0;
   num_inliers = 0;
 
-  for (measurement_num=1:size(Zl,2))
+  for (measurement_num=1:size(Zp,2))
     pose_index=associations(1,measurement_num);
     landmark_index=associations(2,measurement_num);
-    z=Zl(:,measurement_num);
+    z=Zp(:,measurement_num);
     Xr=XR(:,:,pose_index);
     Xl=XL(:,landmark_index);
 

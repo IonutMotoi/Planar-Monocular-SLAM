@@ -24,7 +24,8 @@ function [XR, XL, chi_stats_p, num_inliers_p,chi_stats_r, num_inliers_r, H, b] =
 	     Zr,
 	     num_iterations,
 	     damping,
-	     kernel_threshold)
+       kernel_threshold,
+       block_poses)
   
   global num_poses;
   global num_landmarks;
@@ -47,21 +48,27 @@ function [XR, XL, chi_stats_p, num_inliers_p,chi_stats_r, num_inliers_r, H, b] =
     [H_projections, b_projections, chi_, num_inliers_] = buildLinearSystemProjections(XR,XL,Zp,projection_associations, kernel_threshold); 
     chi_stats_p(iteration)+=chi_;
     num_inliers_p(iteration)=num_inliers_;
+    H += H_projections;
+    b += b_projections;
 
-    [H_poses, b_poses, chi_, num_inliers_] = buildLinearSystemPoses(XR, XL, Zr, kernel_threshold);
-    chi_stats_r(iteration)+=chi_;
-    num_inliers_r(iteration)=num_inliers_;
-    
-    H = H_poses + H_projections;
-    b = b_poses + b_projections;
+    if(!block_poses)
+      [H_poses, b_poses, chi_, num_inliers_] = buildLinearSystemPoses(XR, XL, Zr, kernel_threshold);
+      chi_stats_r(iteration)+=chi_;
+      num_inliers_r(iteration)=num_inliers_;
+      H += H_poses;
+      b += b_poses;
+    endif
 
     H+=eye(system_size)*damping;
     dx=zeros(system_size,1);
 
-    % we solve the linear system, blocking the first pose
-    % this corresponds to "remove" from H and b the locks
-    % of the 1st pose, while solving the system
-    dx(pose_dim+1:end)=-(H(pose_dim+1:end,pose_dim+1:end)\b(pose_dim+1:end,1));
+    if(block_poses)
+      % Solve the linear system while blocking all the poses
+      dx(pose_dim*num_poses+1:end)=-(H(pose_dim*num_poses+1:end,pose_dim*num_poses+1:end)\b(pose_dim*num_poses+1:end,1));
+    else
+      % Solve the linear system while blocking the first pose
+      dx(pose_dim+1:end)=-(H(pose_dim+1:end,pose_dim+1:end)\b(pose_dim+1:end,1));
+    endif
     [XR, XL]=boxPlus(XR, XL, dx);
   end
 end

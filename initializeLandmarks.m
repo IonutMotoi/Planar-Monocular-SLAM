@@ -1,4 +1,4 @@
-function XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks)
+function [XL_guess, Zp, projection_associations, new_id_landmarks] = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks)
   global num_poses;
   global num_landmarks;
   global pose_dim;
@@ -7,57 +7,52 @@ function XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations, i
   global z_far;
   global z_near;
   
-  XL_guess = zeros(landmark_dim, num_landmarks);
-  defaultZ = (z_far - z_near) / 2;
   
-  for i = 1:num_landmarks
-    idx = (projection_associations(2,:) == id_landmarks(i));
-    associations = projection_associations(1,idx);
-    % if the landmark is only seen once remove it from the list (cannot triangulate)
-    if size(associations,2) < 2
-      XL_guess(:,i) = [NaN, NaN, NaN]';
-      id_landmarks(i) = NaN;
+  % Get all camera poses in world coordinates
+  X_CAM = zeros(4,4,num_poses);
+  for i = 1:num_poses
+    X_CAM(:,:,i) = getCameraPose(XR_guess(:,:,i));
+  endfor
+
+  % Get the positions of the cameras
+  CAM_POS = X_CAM(1:3,4,:);
+  
+  msg = ["Landmark 0 out of ", mat2str(num_landmarks)];
+  wait_bar = waitbar(0, msg, "Name","Landmarks initialization");
+
+  num_ignored_landmarks = 0;
+  new_num_landmarks = 0;
+  for current_landmark = 1:num_landmarks
+    msg = ["Landmark ", mat2str(current_landmark), " out of ", mat2str(num_landmarks)];
+    waitbar(current_landmark/num_landmarks, wait_bar, msg);
+
+    idx = (projection_associations(2,:) == id_landmarks(current_landmark));
+    poses = projection_associations(1,idx);
+    projections = Zp(:,idx);
+
+    % If the landmark is only seen once ignore it (cannot triangulate)
+    % Also remove the projection measurement and the association
+    if size(poses,2) < 2
+      num_ignored_landmarks += 1;
       continue;
     endif
-    projections = Zp(:,idx);
     
+    % Get all the directions from the views pointing at the current landmark
+    for current_pose = 1:size(poses,2)
+      R = X_CAM(1:3,1:3,poses(current_pose));
+      points(:,current_pose) = X_CAM(1:3,4,poses(current_pose));
+      directions(:,current_pose) = R * directionFromImgCoordinates(projections(:,current_pose));
+    endfor
 
-    X1 = getCameraPose(XR_guess(:,:,associations(1)));
-    R1 = X1(1:3,1:3);
-    t1 = X1(1:3,4);
-    d1 = R1*directionFromImgCoordinates( projections(:,1) );
-
-    X2 = getCameraPose(XR_guess(:,:,associations(2)));
-    R2 = X2(1:3,1:3);
-    d2 = R2*directionFromImgCoordinates( projections(:,2) );
-
-    second_cam_pose = 2;
-    min_dot_product = abs(dot(d1,d2));
-
-    if size(associations,2) > 2
-      for j = 3:size(associations,2);
-        Xtemp = getCameraPose( XR_guess(:,:,associations(j)) );
-        Rtemp = Xtemp(1:3,1:3);
-        dtemp = Rtemp * directionFromImgCoordinates( projections(:,j) );
-        dot_product = abs(dot(d1,dtemp));
-
-        if dot_product < min_dot_product
-          min_dot_product = dot_product;
-          second_cam_pose = j;
-          X2 = Xtemp;
-          d2 = dtemp;
-        endif
-      endfor
-    endif
-
-    t2 = X2(1:3,4);
-    p2 = t2 -t1;
-    
-    [success, l, e] = triangulatePoint(p2,d1,d2);
-    XL_guess(:,i) = l + t1;
+    new_num_landmarks += 1; % to account for ignored landmarks
+    % Triangulate landmark using all the available views
+    XL_guess(:,new_num_landmarks) = triangulateMultipleViews(points, directions);
+    new_id_landmarks(new_num_landmarks) = id_landmarks(current_landmark);
   endfor
-  % update the number of landmarks
-  num_landmarks = size(id_landmarks,2);
+
+  close(wait_bar);
+  disp([mat2str(num_ignored_landmarks), " landmarks were ignored because they are only seen once"])
+  num_landmarks = new_num_landmarks;
 end
 
 % Returns camera pose in world coordinates
@@ -69,28 +64,10 @@ function X_cam = getCameraPose(XR)
   X_cam = X_cam * cam_pose;
 endfunction
 
+% Returns a unit 3d vector given the image coordinates
 function d = directionFromImgCoordinates(img_coord)
   global invK;
   img_coord(3,1) = 1;
   d = invK*img_coord;
   d *= 1/norm(d);
 endfunction
-
-function [success, p, e]=triangulatePoint(p2, d1, d2)
-  p=zeros(3,1);
-  success=false;
-  e=-1;
-                      
-  D=[-d1, d2];         #assemble system matrix to find ascissa 
-  s=-(D'*D)\(D'*p2);  
-  #s: ascissa of closest point on p1 and p2
-  if (s(1)<0 || s(2)<0)
-    disp("ERRROROORORORORO")
-    return;
-  endif;
-  success=true;
-  p1_triangulated=d1*s(1);   # point on 1st line
-  p2_triangulated=d2*s(2)+p2; # point on 2nd line
-  e=norm(p1_triangulated-p2_triangulated); #difference between the points
-  p=0.5*(p1_triangulated+p2_triangulated);               #midpoint
-endfunction;

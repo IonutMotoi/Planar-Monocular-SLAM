@@ -58,6 +58,7 @@ end
 
 
 %%%%%%%%%%%%%%% PROJECTION MEASUREMENTS %%%%%%%%%%%%%%%
+
 measurement_num=0;
 for pose_num = 1:num_poses
   [id_landmarks, measurements] = readMeasurements(pose_num);
@@ -70,36 +71,43 @@ end
 
 
 %%%%%%%%%%%%%%% INITIALIZE LANDMARKS %%%%%%%%%%%%%%%
+disp("Landmarks initialization\n")
 id_landmarks = unique(projection_associations(2,:)); % ids start from 1
 global num_landmarks = size(id_landmarks,2);
 global landmark_dim = 3;
 
-XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks);
+[XL_guess, Zp, projection_associations, id_landmarks] = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks);
+num_landmarks = size(id_landmarks,2);
 
+%%%%%%%%%%%%%%% UPDATE PROJECTION MEASUREMENTS %%%%%%%%%%%%%%%
+% for i = 1:size(Zp,2)
+%   projection_associations(:,i) = [];
+%   Zp(:,measurement_num) = [];
+% end
 
-%%%%%%%%%%%%%%% GENERATION OF (WRONG) INITIAL GUESS %%%%%%%%%%%%%%%
-% pert_deviation=0.5;
-% pert_scale=eye(3)*pert_deviation;
-% for (pose_num=2:num_poses)
-%     xr=rand(3,1)-0.5;
-%     dXr=v2t(pert_scale*xr);
-%     XR_guess(:,:,pose_num)=dXr*XR_guess(:,:,pose_num);
-% endfor;
-% for (landmark_num=1:num_landmarks)
-%     dXl=rand(3,1)-0.5;
-%     XL_guess(:,landmark_num)=XL_guess(:,landmark_num) + dXl;
-% endfor;
 
 % %%%%%%%%%%%%%%% LEAST SQUARES SOLVER %%%%%%%%%%%%%%%
-% damping=1;
-% kernel_threshold=1e3;
-% num_iterations=20;
+damping=1;
+kernel_threshold=1e3;
+num_iterations=20;
+
+block_poses = true;
+[XR_guess, XL_guess, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
+                                                                                Zp, projection_associations, 
+                                                                                Zr, 
+                                                                                num_iterations,
+                                                                                damping,
+                                                                                kernel_threshold,
+                                                                                block_poses);
+       
+% block_poses = false;
 % [XR, XL, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
 %                                                                                 Zp, projection_associations, 
 %                                                                                 Zr, 
 %                                                                                 num_iterations,
 %                                                                                 damping,
-%                                                                                 kernel_threshold);
+%                                                                                 kernel_threshold,
+%                                                                                 block_poses);
 
 
 % %%%%%%%%%%%%%%% PLOTS %%%%%%%%%%%%%%%
