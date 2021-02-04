@@ -1,4 +1,4 @@
-function XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations)
+function XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks)
   global num_poses;
   global num_landmarks;
   global pose_dim;
@@ -8,17 +8,16 @@ function XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations)
   global z_near;
   
   XL_guess = zeros(landmark_dim, num_landmarks);
-  defaultZ = (z_far - z_near) / 2
+  defaultZ = (z_far - z_near) / 2;
   
   for i = 1:num_landmarks
-    idx = (projection_associations(2,:) == i);
+    idx = (projection_associations(2,:) == id_landmarks(i));
     associations = projection_associations(1,idx);
     if isempty(associations)
       XL_guess(:,i) = [NaN; NaN; NaN];
       continue;
     endif
     projections = Zp(:,idx);
-    disp(i)
     
     X1 = getCameraPose(XR_guess(:,:,associations(1)));
     R1 = X1(1:3,1:3);
@@ -26,7 +25,7 @@ function XL_guess = initializeLandmarks(XR_guess, Zp, projection_associations)
     z1 = projections(:,1);
     d1 = R1*directionFromImgCoordinates(z1);
     
-    if size(associations == 1)
+    if size(associations,2) == 1
       % if landmark was only seen once, set the direction from the image
       % and the z as the midpoint between z_near and z_far
       XL_guess(:,i) = d1 / d1(3) * defaultZ;

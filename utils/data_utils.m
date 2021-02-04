@@ -31,9 +31,9 @@ function lan_gt = readLandmarksGT()
   fclose(fid);
 end
 
-function [id_landmarks, measurements] = readMeasurements(i)
-  i = num2str(i-1,'%05.f'); % i-1 since measurements start from 0
-  fid = fopen(strcat("./Dataset/meas-",i,".dat"), 'r');
+function [id_landmarks, measurements] = readMeasurements(pose_num)
+  meas_num = num2str(pose_num-1,'%05.f'); % pose_num-1 since measurements start from 0
+  fid = fopen(strcat("./Dataset/meas-",meas_num,".dat"), 'r');
   data = textscan(fid, "%*s %*d %f %f %f", "HeaderLines",3);
   id_landmarks = cell2mat(data(1,1))';
   measurements = cell2mat(data(1,2:3))';

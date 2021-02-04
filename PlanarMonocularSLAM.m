@@ -7,12 +7,14 @@ source "./utils/geom_utils.m"
 source "./least_squares.m"
 
 %%%%%%%%%%%%%%% LOAD DATA %%%%%%%%%%%%%%%
+% note: poses and measurements start from 1 instead of 0
+%       e.g. the first pose in XR_guess is the pose 0
 
 % Read the trajectory (measurements & ground truth)
 % Matrices 3*num_poses
 [traj_meas,traj_gt] = readTrajectory();
 global num_poses = size(traj_meas,2)
-global pose_dim = size(traj_meas,1) % 3
+global pose_dim = 3
 
 % Convert the robot poses to an array of homogeneous matrices
 % Matrices 3*3*num_poses
@@ -40,11 +42,10 @@ global invK = inv(K);
 % Read the landmark true positions
 % Matrix 3*num_landmarks
 XL_true = readLandmarksGT();
-global num_landmarks = size(XL_true,2) % total number of landmarks assumed to be known
-global landmark_dim = size(XL_true,1) % 3
 
 % For now initialize landmark positions with ground truth
-XL_guess = XL_true;
+% XL_guess = XL_true;
+
 
 %%%%%%%%%%%%%%% POSE MEASUREMENTS %%%%%%%%%%%%%%%
 Zr=zeros(3,3,num_poses-1);
@@ -55,27 +56,26 @@ for measurement_num=1:num_poses-1
   Zr(:,:,measurement_num)=inv(Xi)*Xj;
 end
 
-%%%%%%%%%%%%%%% PROJECTION MEASUREMENTS %%%%%%%%%%%%%%%
-Zp=zeros(2,num_poses*num_landmarks);
-projection_associations=zeros(2,num_poses*num_landmarks);
 
-% Read the projection measurements
+%%%%%%%%%%%%%%% PROJECTION MEASUREMENTS %%%%%%%%%%%%%%%
 measurement_num=0;
 for pose_num = 1:num_poses
   [id_landmarks, measurements] = readMeasurements(pose_num);
-  for meas = 1:size(measurements,2)
+  for i = 1:size(measurements,2)
     measurement_num = measurement_num + 1;
-    projection_associations(:,measurement_num) = [pose_num, id_landmarks(meas)+1]';
-    Zp(:,measurement_num) = measurements(:,meas);
+    projection_associations(:,measurement_num) = [pose_num, id_landmarks(i)+1]';
+    Zp(:,measurement_num) = measurements(:,i);
   end
 end
 
-% Crop the matrices
-projection_associations=projection_associations(:,1:measurement_num);
-Zp=Zp(:,1:measurement_num);
 
 %%%%%%%%%%%%%%% INITIALIZE LANDMARKS %%%%%%%%%%%%%%%
-Xl_test = initializeLandmarks(XR_guess, Zp, projection_associations);
+id_landmarks = unique(projection_associations(2,:));
+global num_landmarks = size(id_landmarks,2);
+global landmark_dim = 3;
+
+Xl_guess = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks);
+
 
 %%%%%%%%%%%%%%% GENERATION OF (WRONG) INITIAL GUESS %%%%%%%%%%%%%%%
 % pert_deviation=0.5;
