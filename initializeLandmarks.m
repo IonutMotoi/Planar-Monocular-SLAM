@@ -25,6 +25,9 @@ function [XL_guess, new_Zp, new_projection_associations, new_id_landmarks] = ...
   num_ignored_landmarks = 0;
   new_num_landmarks = 0;
   for current_landmark = 1:num_landmarks
+    points = [];
+    direction = [];
+
     % Progress bar update
     msg = ["Landmark ", num2str(current_landmark), " out of ", num2str(num_landmarks)];
     waitbar(current_landmark/num_landmarks, wait_bar, msg);

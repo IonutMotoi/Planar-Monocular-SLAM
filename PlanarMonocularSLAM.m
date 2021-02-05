@@ -75,13 +75,12 @@ global landmark_dim = 3;
 [XL_guess, Zp, projection_associations, id_landmarks] = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks);
 num_landmarks = size(id_landmarks,2);
 
-
 % %%%%%%%%%%%%%%% LEAST SQUARES SOLVER %%%%%%%%%%%%%%%
 damping=1;
 kernel_threshold=1e3;
 
 disp("Preliminary Landmarks Optimization\n")
-num_iterations=30;
+num_iterations=5;
 block_poses = true;
 [XR_guess, XL_guess, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
                                                                                 Zp, projection_associations, 
@@ -90,9 +89,9 @@ block_poses = true;
                                                                                 damping,
                                                                                 kernel_threshold,
                                                                                 block_poses);
-      
+
 disp("Least Squares\n")
-num_iterations=30;
+num_iterations=20;
 block_poses = false;
 [XR, XL, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
                                                                                 Zp, projection_associations, 
