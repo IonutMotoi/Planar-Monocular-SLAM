@@ -37,10 +37,20 @@ function [XR, XL, chi_stats_p, num_inliers_p,chi_stats_r, num_inliers_r, H, b] =
   chi_stats_r=zeros(1,num_iterations);
   num_inliers_r=zeros(1,num_iterations);
 
+  % Progress bar initialization
+  msg = ["Iteration 0 out of ", num2str(num_iterations)];
+  if(block_poses)
+    wait_bar = waitbar(0, msg, "Name","Preliminary Landmarks Optimization");
+  else
+    wait_bar = waitbar(0, msg, "Name","Least Squares");
+  endif
+
   % size of the linear system
   system_size=pose_dim*num_poses+landmark_dim*num_landmarks; 
   for (iteration=1:num_iterations)
-    disp(["Iteration " num2str(iteration) "/" num2str(num_iterations)])
+    % Progress bar update
+    msg = ["Iteration ", num2str(iteration), " out of ", num2str(num_iterations)];
+    waitbar(iteration/num_iterations, wait_bar, msg);
     
     H=zeros(system_size, system_size);
     b=zeros(system_size,1);
@@ -70,5 +80,6 @@ function [XR, XL, chi_stats_p, num_inliers_p,chi_stats_r, num_inliers_r, H, b] =
       dx(pose_dim+1:end)=-(H(pose_dim+1:end,pose_dim+1:end)\b(pose_dim+1:end,1));
     endif
     [XR, XL]=boxPlus(XR, XL, dx);
-  end
+  endfor
+  close(wait_bar);
 end

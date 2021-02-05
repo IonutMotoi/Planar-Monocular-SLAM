@@ -1,4 +1,6 @@
-function [XL_guess, Zp, projection_associations, new_id_landmarks] = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks)
+function [XL_guess, new_Zp, new_projection_associations, new_id_landmarks] = ...
+  initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks)
+
   global num_poses;
   global num_landmarks;
   global pose_dim;
@@ -7,25 +9,27 @@ function [XL_guess, Zp, projection_associations, new_id_landmarks] = initializeL
   global z_far;
   global z_near;
   
-  
+  new_Zp = Zp;
+  new_projection_associations = projection_associations;
+
   % Get all camera poses in world coordinates
   X_CAM = zeros(4,4,num_poses);
   for i = 1:num_poses
     X_CAM(:,:,i) = getCameraPose(XR_guess(:,:,i));
   endfor
-
-  % Get the positions of the cameras
-  CAM_POS = X_CAM(1:3,4,:);
   
-  msg = ["Landmark 0 out of ", mat2str(num_landmarks)];
-  wait_bar = waitbar(0, msg, "Name","Landmarks initialization");
+  % Progress bar initialization
+  msg = ["Landmark 0 out of ", num2str(num_landmarks)];
+  wait_bar = waitbar(0, msg, "Name","Landmarks Initialization");
 
   num_ignored_landmarks = 0;
   new_num_landmarks = 0;
   for current_landmark = 1:num_landmarks
-    msg = ["Landmark ", mat2str(current_landmark), " out of ", mat2str(num_landmarks)];
+    % Progress bar update
+    msg = ["Landmark ", num2str(current_landmark), " out of ", num2str(num_landmarks)];
     waitbar(current_landmark/num_landmarks, wait_bar, msg);
 
+    % Select only the poses and projections relevant to the current landmark
     idx = (projection_associations(2,:) == id_landmarks(current_landmark));
     poses = projection_associations(1,idx);
     projections = Zp(:,idx);
@@ -33,14 +37,15 @@ function [XL_guess, Zp, projection_associations, new_id_landmarks] = initializeL
     % If the landmark is only seen once ignore it (cannot triangulate)
     % Also remove the projection measurement and the association
     if size(poses,2) < 2
-      num_ignored_landmarks += 1;
+      new_Zp(:,idx) = [NaN, NaN]';
+      new_projection_associations(:,idx) = [NaN, NaN]';
       continue;
     endif
     
     % Get all the directions from the views pointing at the current landmark
     for current_pose = 1:size(poses,2)
-      R = X_CAM(1:3,1:3,poses(current_pose));
       points(:,current_pose) = X_CAM(1:3,4,poses(current_pose));
+      R = X_CAM(1:3,1:3,poses(current_pose));
       directions(:,current_pose) = R * directionFromImgCoordinates(projections(:,current_pose));
     endfor
 
@@ -48,11 +53,15 @@ function [XL_guess, Zp, projection_associations, new_id_landmarks] = initializeL
     % Triangulate landmark using all the available views
     XL_guess(:,new_num_landmarks) = triangulateMultipleViews(points, directions);
     new_id_landmarks(new_num_landmarks) = id_landmarks(current_landmark);
+    new_projection_associations(2,idx) = new_num_landmarks;
   endfor
 
+  % Remove the landmarks that were only seen once
+  new_Zp = new_Zp(:,all(~isnan(new_Zp)));
+  new_projection_associations = new_projection_associations(:,all(~isnan(new_projection_associations)));
+
   close(wait_bar);
-  disp([mat2str(num_ignored_landmarks), " landmarks were ignored because they are only seen once"])
-  num_landmarks = new_num_landmarks;
+  disp([mat2str(num_landmarks - new_num_landmarks), " landmarks were ignored because they are only seen once\n"])
 end
 
 % Returns camera pose in world coordinates

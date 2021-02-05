@@ -43,9 +43,6 @@ global invK = inv(K);
 % Matrix 3*num_landmarks
 XL_true = readLandmarksGT();
 
-% For now initialize landmark positions with ground truth
-% XL_guess = XL_true;
-
 
 %%%%%%%%%%%%%%% POSE MEASUREMENTS %%%%%%%%%%%%%%%
 Zr=zeros(3,3,num_poses-1);
@@ -58,7 +55,6 @@ end
 
 
 %%%%%%%%%%%%%%% PROJECTION MEASUREMENTS %%%%%%%%%%%%%%%
-
 measurement_num=0;
 for pose_num = 1:num_poses
   [id_landmarks, measurements] = readMeasurements(pose_num);
@@ -71,7 +67,7 @@ end
 
 
 %%%%%%%%%%%%%%% INITIALIZE LANDMARKS %%%%%%%%%%%%%%%
-disp("Landmarks initialization\n")
+disp("Landmarks Initialization\n")
 id_landmarks = unique(projection_associations(2,:)); % ids start from 1
 global num_landmarks = size(id_landmarks,2);
 global landmark_dim = 3;
@@ -79,18 +75,13 @@ global landmark_dim = 3;
 [XL_guess, Zp, projection_associations, id_landmarks] = initializeLandmarks(XR_guess, Zp, projection_associations, id_landmarks);
 num_landmarks = size(id_landmarks,2);
 
-%%%%%%%%%%%%%%% UPDATE PROJECTION MEASUREMENTS %%%%%%%%%%%%%%%
-% for i = 1:size(Zp,2)
-%   projection_associations(:,i) = [];
-%   Zp(:,measurement_num) = [];
-% end
-
 
 % %%%%%%%%%%%%%%% LEAST SQUARES SOLVER %%%%%%%%%%%%%%%
 damping=1;
 kernel_threshold=1e3;
-num_iterations=20;
 
+disp("Preliminary Landmarks Optimization\n")
+num_iterations=30;
 block_poses = true;
 [XR_guess, XL_guess, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
                                                                                 Zp, projection_associations, 
@@ -99,83 +90,88 @@ block_poses = true;
                                                                                 damping,
                                                                                 kernel_threshold,
                                                                                 block_poses);
-       
-% block_poses = false;
-% [XR, XL, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
-%                                                                                 Zp, projection_associations, 
-%                                                                                 Zr, 
-%                                                                                 num_iterations,
-%                                                                                 damping,
-%                                                                                 kernel_threshold,
-%                                                                                 block_poses);
+      
+disp("Least Squares\n")
+num_iterations=30;
+block_poses = false;
+[XR, XL, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR_guess, XL_guess,
+                                                                                Zp, projection_associations, 
+                                                                                Zr, 
+                                                                                num_iterations,
+                                                                                damping,
+                                                                                kernel_threshold,
+                                                                                block_poses);
 
 
-% %%%%%%%%%%%%%%% PLOTS %%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%% PLOTS %%%%%%%%%%%%%%%
 
-% figure(1);
-% hold on;
-% grid;
+figure(1);
+hold on;
+grid;
 
-% subplot(2,2,1);
-% title("Poses Initial Guess");
-% plot(XR_true(1,:),XR_true(2,:),'b*',"linewidth",2);
-% hold on;
-% plot(XR_guess(1,:),XR_guess(2,:),'ro',"linewidth",2);
-% legend("Poses True", "Guess");grid;
+subplot(1,2,1);
+title("Poses Initial Guess");
+plot(XR_true(1,:),XR_true(2,:),'b*',"linewidth",2);
+hold on;
+plot(XR_guess(1,:),XR_guess(2,:),'ro',"linewidth",2);
+legend("Poses True", "Guess");grid;
 
-% subplot(2,2,2);
-% title("Poses After Optimization");
-% plot(XR_true(1,:),XR_true(2,:),'b*',"linewidth",2);
-% hold on;
-% plot(XR(1,:),XR(2,:),'ro',"linewidth",2);
-% legend("Poses True", "Guess"); grid;
+subplot(1,2,2);
+title("Poses After Optimization");
+plot(XR_true(1,:),XR_true(2,:),'b*',"linewidth",2);
+hold on;
+plot(XR(1,:),XR(2,:),'ro',"linewidth",2);
+legend("Poses True", "Guess"); grid;
 
+figure(2);
+hold on;
+grid;
 
-% % subplot(2,2,3);
-% % title("Landmark Initial Guess");
-% % plot(XL_true(1,:),XL_true(2,:),'b*',"linewidth",2);
-% % hold on;
-% % plot(XL_guess(1,:),XL_guess(2,:),'ro',"linewidth",2);
-% % legend("Landmark True", "Guess");grid;
+subplot(2,2,1);
+title("Landmark Initial Guess");
+plot(XL_true(1,:),XL_true(2,:),'b*',"linewidth",2);
+hold on;
+plot(XL_guess(1,:),XL_guess(2,:),'ro',"linewidth",2);
+legend("Landmark True", "Guess");grid;
 
-% % subplot(2,2,4);
-% % title("Landmark After Optimization");
-% % plot(XL_true(1,:),XL_true(2,:),'b*',"linewidth",2);
-% % hold on;
-% % plot(XL(1,:),XL(2,:),'ro',"linewidth",2);
-% % legend("Landmark True", "Guess");grid;
-
-
-% subplot(2,2,3);
-% title("Landmark Initial Guess");
-% plot3(XL_true(1,:),XL_true(2,:),XL_true(3,:),'b*',"linewidth",2);
-% hold on;
-% plot3(XL_guess(1,:),XL_guess(2,:),XL_guess(3,:),'ro',"linewidth",2);
-% legend("Landmark True", "Guess");grid;
-
-% subplot(2,2,4);
-% title("Landmark After Optimization");
-% plot3(XL_true(1,:),XL_true(2,:),XL_true(3,:),'b*',"linewidth",2);
-% hold on;
-% plot3(XL(1,:),XL(2,:),XL(3,:),'ro',"linewidth",2);
-% legend("Landmark True", "Guess");grid;
+subplot(2,2,2);
+title("Landmark After Optimization");
+plot(XL_true(1,:),XL_true(2,:),'b*',"linewidth",2);
+hold on;
+plot(XL(1,:),XL(2,:),'ro',"linewidth",2);
+legend("Landmark True", "Guess");grid;
 
 
-% figure(2);
-% hold on;
-% grid;
-% title("chi evolution");
+subplot(2,2,3);
+title("Landmark Initial Guess");
+plot3(XL_true(1,:),XL_true(2,:),XL_true(3,:),'b*',"linewidth",2);
+hold on;
+plot3(XL_guess(1,:),XL_guess(2,:),XL_guess(3,:),'ro',"linewidth",2);
+legend("Landmark True", "Guess");grid;
 
-% subplot(2,2,1);
-% plot(chi_stats_r, 'r-', "linewidth", 2);
-% legend("Chi Poses"); grid; xlabel("iterations");
-% subplot(2,2,2);
-% plot(num_inliers_r, 'b-', "linewidth", 2);
-% legend("#inliers"); grid; xlabel("iterations");
+subplot(2,2,4);
+title("Landmark After Optimization");
+plot3(XL_true(1,:),XL_true(2,:),XL_true(3,:),'b*',"linewidth",2);
+hold on;
+plot3(XL(1,:),XL(2,:),XL(3,:),'ro',"linewidth",2);
+legend("Landmark True", "Guess");grid;
 
-% subplot(2,2,3);
-% plot(chi_stats_p, 'r-', "linewidth", 2);
-% legend("Chi Proj"); grid; xlabel("iterations");
-% subplot(2,2,4);
-% plot(num_inliers_p, 'b-', "linewidth", 2);
-% legend("#inliers");grid; xlabel("iterations");
+
+figure(3);
+hold on;
+grid;
+title("chi evolution");
+
+subplot(2,2,1);
+plot(chi_stats_r, 'r-', "linewidth", 2);
+legend("Chi Poses"); grid; xlabel("iterations");
+subplot(2,2,2);
+plot(num_inliers_r, 'b-', "linewidth", 2);
+legend("#inliers"); grid; xlabel("iterations");
+
+subplot(2,2,3);
+plot(chi_stats_p, 'r-', "linewidth", 2);
+legend("Chi Proj"); grid; xlabel("iterations");
+subplot(2,2,4);
+plot(num_inliers_p, 'b-', "linewidth", 2);
+legend("#inliers");grid; xlabel("iterations");
