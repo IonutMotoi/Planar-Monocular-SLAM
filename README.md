@@ -1,7 +1,6 @@
-# ProbRobProject
+# Planar Monocular SLAM
 This is the final project for the course of Probabilistic Robotics (2020/2021) - Sapienza University of Rome  
 
-## Planar Monocular SLAM
 A planar robot (z=0), on which was mounted a camera, has navigated through an environment populated with landmarks placed in 3D space.  
 
 Input:  
